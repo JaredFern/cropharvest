@@ -160,7 +160,7 @@ class CropHarvestLabels(BaseDataset):
                     negative_non_crop_paths = self._dataframe_to_paths(negative_non_crop_labels)
                     negative_paths = self._dataframe_to_paths(negative_other_crop_labels)
 
-                    if task.balance_negative_crops:
+                    if task.balance_negative_crops and len(negative_paths):
                         multiplier = math.ceil(len(negative_non_crop_paths) / len(negative_paths))
                         negative_paths *= multiplier
                         negative_paths.extend(negative_non_crop_paths)
@@ -222,9 +222,9 @@ class CropHarvest(BaseDataset):
         self.normalizing_dict = load_normalizing_dict(
             Path(root) / f"{FEATURES_DIR}/normalizing_dict.h5"
         )
-
+        # import ipdb; ipdb.set_trace()
         positive_paths, negative_paths = labels.construct_positive_and_negative_labels(
-            task, filter_test=True
+            task, filter_test=False
         )
         if val_ratio > 0.0:
             # the fixed seed is to ensure the validation set is always

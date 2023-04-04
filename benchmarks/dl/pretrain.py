@@ -27,6 +27,7 @@ class Pretrainer(pl.LightningModule):
         num_classification_layers: int,
         pretrained_val_ratio: float,
         model_name: str,
+        device="cuda"
     ) -> None:
         super().__init__()
 
@@ -35,6 +36,7 @@ class Pretrainer(pl.LightningModule):
         self.learning_rate = learning_rate
         self.pretrained_val_ratio = pretrained_val_ratio
         self.model_name = model_name
+        self.device = device
 
         (Path(self.root) / self.model_name).mkdir(exist_ok=True)
 
@@ -44,7 +46,7 @@ class Pretrainer(pl.LightningModule):
             classifier_dropout=classifier_dropout,
             classifier_base_layers=classifier_base_layers,
             num_classification_layers=num_classification_layers,
-        )
+        ).to(device)
 
         self.best_val_loss: float = np.inf
 
@@ -69,6 +71,8 @@ class Pretrainer(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
+        x = x.to(self.device)
+        y = y.to(self.device)
 
         preds = self.forward(x.float())
         loss = self.loss(preds.squeeze(1), y.float())
@@ -77,6 +81,8 @@ class Pretrainer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
+        x = x.to(self.device)
+        y = y.to(self.device)
 
         preds = self.forward(x.float())
         loss = self.loss(preds.squeeze(1), y.float())

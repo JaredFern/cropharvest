@@ -57,6 +57,7 @@ class Learner:
         k: int = 10,
         update_val_size: int = 8,
         val_size: float = 0.1,
+        device="cuda"
     ) -> None:
 
         # update val size needs to be divided by 2 since
@@ -77,6 +78,7 @@ class Learner:
         }
 
         self.root = Path(root)
+        self.device = device
         self.train_tasks, self.val_tasks = {}, {}
 
         train_tasks, val_tasks = self._make_tasks(min_task_k=min_total_k, val_size=val_size)
@@ -95,7 +97,7 @@ class Learner:
             classifier_dropout=classifier_dropout,
             classifier_vector_size=classifier_vector_size,
             num_classification_layers=num_classification_layers,
-        )
+        ).to(device)
 
         self.loss = nn.BCELoss(reduction="mean")
 
@@ -138,6 +140,8 @@ class Learner:
 
         batch_size = k * 2  # k is the number of positive, negative examples
         data, labels = batch
+        data = data.to(self.device)
+        labels = labels.to(self.device)
 
         max_train_index = int(data.shape[0] - val_size)
         adaptation_data, adaptation_labels = data[:max_train_index], labels[:max_train_index]

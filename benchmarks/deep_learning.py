@@ -32,7 +32,7 @@ def run(
     if (model_name != DL_RANDOM) and (state_dict is None):
         raise ValueError(f"state_dict can't be None if model_name is not {DL_RANDOM}")
 
-    evaluation_datasets = CropHarvest.create_benchmark_datasets(data_folder)
+    evaluation_datasets = CropHarvest.create_benchmark_datasets(data_folder, filter_test=False)
     results_folder = data_folder / model_name
     results_folder.mkdir(exist_ok=True)
 
@@ -95,11 +95,11 @@ def run(
 
 if __name__ == "__main__":
 
-    data_folder = DATAFOLDER_PATH
+    data_folder = "/data/datasets/cropharvest"
     checkpoint = True
 
     # we start by making the state_dicts necessary for the pretrained models
-    if checkpoint and (data_folder / DL_MAML / "state_dict.pth").exists():
+    if checkpoint and Path(f"{data_folder}/checkpoints/{DL_MAML}/state_dict.pth").exists():
         pass
     else:
         train_maml_model(
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             model_name=DL_MAML,
         )
 
-    if checkpoint and (data_folder / DL_PRETRAINED / "state_dict.pth").exists():
+    if checkpoint and Path(f"{data_folder}/checkpoints/{DL_PRETRAINED}/state_dict.pth").exists():
         pass
     else:
         pretrain_model(
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     for model in [DL_PRETRAINED, DL_MAML, DL_RANDOM]:
         if model != DL_RANDOM:
-            state_dict = torch.load(data_folder / model / "state_dict.pth")
+            state_dict = torch.load(Path(f"{data_folder}/checkpoints/{model}/state_dict.pth"))
         else:
             state_dict = None
 
