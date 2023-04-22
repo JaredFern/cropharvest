@@ -18,7 +18,7 @@ EXPORT_END_DAY = 1
 
 DATASET_VERSION_ID = 7257688
 DATASET_URL = f"https://zenodo.org/record/{DATASET_VERSION_ID}"
-LABELS_FILENAME = "labels.geojson"
+LABELS_FILENAME = "labels_extended.geojson"
 FEATURES_DIR = "features"
 TEST_FEATURES_DIR = "test_features"
 

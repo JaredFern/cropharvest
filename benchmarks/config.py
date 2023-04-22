@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 
-SHUFFLE_SEEDS = list(range(10))
+SHUFFLE_SEEDS = list(range(3))
 
 DATASET_TO_SIZES: Dict[str, List] = {
     "Kenya_1_maize": [None],

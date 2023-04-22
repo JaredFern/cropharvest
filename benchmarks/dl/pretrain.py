@@ -27,7 +27,6 @@ class Pretrainer(pl.LightningModule):
         num_classification_layers: int,
         pretrained_val_ratio: float,
         model_name: str,
-        device="cuda"
     ) -> None:
         super().__init__()
 
@@ -36,7 +35,7 @@ class Pretrainer(pl.LightningModule):
         self.learning_rate = learning_rate
         self.pretrained_val_ratio = pretrained_val_ratio
         self.model_name = model_name
-        self.device = device
+        self.device = 'cuda'
 
         (Path(self.root) / self.model_name).mkdir(exist_ok=True)
 

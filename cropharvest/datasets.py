@@ -24,6 +24,7 @@ from cropharvest.config import (
 )
 from cropharvest.columns import NullableColumns, RequiredColumns
 from cropharvest.engineer import TestInstance
+from cropharvest.label_map import LABEL_MAP
 from cropharvest import countries
 
 from typing import cast, List, Optional, Tuple, Generator
@@ -37,6 +38,7 @@ class Task:
     test_identifier: Optional[str] = None
     normalize: bool = True
     include_externally_contributed_labels: bool = True
+    labelset: Optional[str] = None
 
     def __post_init__(self):
         if self.target_label is None:
@@ -107,12 +109,19 @@ class CropHarvestLabels(BaseDataset):
         return gpdf[include_condition]
 
     def classes_in_bbox(
-        self, bounding_box: BBox, include_external_contributions: bool
+        self, bounding_box: BBox, include_external_contributions: bool, labelset: str
     ) -> List[str]:
         bbox_geojson = self.filter_geojson(
             self.as_geojson(), bounding_box, include_external_contributions
         )
-        unique_labels = [x for x in bbox_geojson.label.unique() if x is not None]
+        if labelset == 'consolidated':
+            unique_labels = [x for x in bbox_geojson.consolidated.unique() if x is not None]
+        elif labelset == 'coarse':
+            unique_labels = [x for x in bbox_geojson.coarse.unique() if x is not None]
+        elif labelset == 'hierarchical':
+            unique_labels = [x for x in bbox_geojson.hierarchical.unique() if x is not None]
+        else:
+            unique_labels = [x for x in bbox_geojson.label.unique() if x is not None]
         return unique_labels
 
     def __getitem__(self, index: int):
@@ -138,12 +147,21 @@ class CropHarvestLabels(BaseDataset):
         is_null = gpdf[NullableColumns.LABEL].isnull()
         is_crop = gpdf[RequiredColumns.IS_CROP] == True
 
+        if task.labelset == 'consolidated':
+            label_column = NullableColumns.CONSOLIDATED_LABEL
+        elif task.labelset == 'coarse':
+            label_column = NullableColumns.COARSE_LABEL
+        elif task.labelset == 'hierarchical':
+            label_column = NullableColumns.HIERARCHICAL_LABEL
+        else:
+            label_column = NullableColumns.LABEL
+
+
         try:
             if task.target_label != "crop":
-                positive_labels = gpdf[gpdf[NullableColumns.LABEL] == task.target_label]
+                positive_labels = gpdf[gpdf[label_column] == task.target_label]
                 target_label_is_crop = positive_labels.iloc[0][RequiredColumns.IS_CROP]
-
-                is_target = gpdf[NullableColumns.LABEL] == task.target_label
+                is_target = gpdf[label_column] == task.target_label
 
                 if not target_label_is_crop:
                     # if the target label is a non crop class (e.g. pasture),
@@ -222,10 +240,7 @@ class CropHarvest(BaseDataset):
         self.normalizing_dict = load_normalizing_dict(
             Path(root) / f"{FEATURES_DIR}/normalizing_dict.h5"
         )
-        # import ipdb; ipdb.set_trace()
-        positive_paths, negative_paths = labels.construct_positive_and_negative_labels(
-            task, filter_test=False
-        )
+        positive_paths, negative_paths = labels.construct_positive_and_negative_labels(task, filter_test=False)
         if val_ratio > 0.0:
             # the fixed seed is to ensure the validation set is always
             # different from the training set

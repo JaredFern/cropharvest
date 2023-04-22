@@ -19,6 +19,7 @@ from .lstm import Classifier
 
 from cropharvest.datasets import CropHarvest, CropHarvestLabels, Task
 from cropharvest import countries
+from cropharvest.label_map import LABEL_MAP
 from cropharvest.config import TEST_DATASETS, TEST_REGIONS
 from cropharvest.utils import NoDataForBoundingBoxError
 
@@ -57,7 +58,8 @@ class Learner:
         k: int = 10,
         update_val_size: int = 8,
         val_size: float = 0.1,
-        device="cuda"
+        device="cuda",
+        labelset='consolidated'
     ) -> None:
 
         # update val size needs to be divided by 2 since
@@ -81,7 +83,7 @@ class Learner:
         self.device = device
         self.train_tasks, self.val_tasks = {}, {}
 
-        train_tasks, val_tasks = self._make_tasks(min_task_k=min_total_k, val_size=val_size)
+        train_tasks, val_tasks = self._make_tasks(min_task_k=min_total_k, val_size=val_size, labelset=labelset)
         print(f"Using {len(train_tasks)} train tasks and {len(val_tasks)} val tasks")
         self.train_tasks.update(train_tasks)
         self.val_tasks.update(val_tasks)
@@ -203,7 +205,7 @@ class Learner:
         with (self.version_folder / "train_info.json").open("w") as f:
             json.dump(self.train_info, f)
 
-        self.maml = l2l.algorithms.MAML(self.model, lr=update_lr, first_order=False)
+        self.maml = l2l.algorithms.MAML(self.model, lr=update_lr, first_order=True)
         opt = optim.Adam(self.maml.parameters(), meta_lr)
         best_val_score = np.inf
 
@@ -214,7 +216,6 @@ class Learner:
         labels = self.train_dl.task_labels
 
         for iteration_num in tqdm(range(num_iterations)):
-
             opt.zero_grad()
             meta_train_error = 0.0
             meta_valid_error = 0.0
@@ -363,7 +364,7 @@ class Learner:
         torch.save(self.model.state_dict(), self.model_folder / "state_dict.pth")
 
     def _make_tasks(
-        self, min_task_k: int, val_size: float
+        self, min_task_k: int, val_size: float, labelset: str = "consolidated"
     ) -> Tuple[Dict[str, CropHarvest], Dict[str, CropHarvest]]:
         labels = CropHarvestLabels(self.root)
 
@@ -385,7 +386,6 @@ class Learner:
                 continue
             country_bboxes = countries.get_country_bbox(country)
             for _, country_bbox in enumerate(country_bboxes):
-
                 try:
                     task = CropHarvest(
                         self.root,
@@ -397,7 +397,7 @@ class Learner:
                 if task.k >= min_task_k:
                     label_to_task[task.id] = task
 
-                for label in labels.classes_in_bbox(country_bbox, True):
+                for label in labels.classes_in_bbox(country_bbox, True, labelset):
                     if country in test_countries_to_crops:
                         if label in test_countries_to_crops[country]:
                             continue
@@ -407,6 +407,7 @@ class Learner:
                             Task(
                                 bounding_box=country_bbox,
                                 target_label=label,
+                                labelset=labelset,
                                 balance_negative_crops=True,
                                 normalize=True,
                             ),
@@ -433,16 +434,19 @@ def train_maml_model(
     classifier_base_layers: int,
     num_classification_layers: int,
     model_name: str,
-    k: int = 10,
+    k: int = 20,
     update_val_size: int = 8,
     val_size: float = 0.1,
     update_lr: float = 0.001,
     meta_lr: float = 0.001,
     max_adaptation_steps: int = 1,
     task_batch_size: int = 32,
-    num_iterations: int = 1000,
+    num_iterations: int = 500,
     save_best_val: bool = True,
     checkpoint_every: int = 20,
+    device: str='cuda',
+    labelset: str = 'hierarchical',
+    task_sampling_strategy='random',
 ) -> Classifier:
     r"""
     Initialize a classifier and pretrain it using model-agnostic meta-learning (MAML)
@@ -484,6 +488,8 @@ def train_maml_model(
         k,
         update_val_size,
         val_size,
+        device,
+        labelset
     )
 
     model.train(

@@ -38,6 +38,9 @@ class NullableColumns(Columns):
     HARVEST_DATE = "harvest_date"
     PLANTING_DATE = "planting_date"
     LABEL = "label"
+    COARSE_LABEL = 'coarse' 
+    CONSOLIDATED_LABEL = 'consolidated'
+    HIERARCHICAL_LABEL = 'hierarchical'
     CLASSIFICATION_LABEL = "classification_label"
 
     @classmethod

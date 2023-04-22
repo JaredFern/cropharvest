@@ -1,3 +1,4 @@
+import argparse
 import torch
 
 from pathlib import Path
@@ -32,8 +33,8 @@ def run(
     if (model_name != DL_RANDOM) and (state_dict is None):
         raise ValueError(f"state_dict can't be None if model_name is not {DL_RANDOM}")
 
-    evaluation_datasets = CropHarvest.create_benchmark_datasets(data_folder, filter_test=False)
-    results_folder = data_folder / model_name
+    evaluation_datasets = CropHarvest.create_benchmark_datasets(data_folder)
+    results_folder = data_folder / Path(model_name)
     results_folder.mkdir(exist_ok=True)
 
     for dataset in evaluation_datasets:
@@ -94,39 +95,45 @@ def run(
 
 
 if __name__ == "__main__":
+    # Create Python argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--labelset', type=str, help='Labelset to use', default="consolidated")
+    parser.add_argument('--data_folder', type=str, help='Path to data folder', default='/projects/tir6/strubell/data/cropharvest/')
+    parser.add_argument('--checkpoint', type=bool, default=False)
+    args = parser.parse_args()
 
-    data_folder = "/data/datasets/cropharvest"
-    checkpoint = True
-
+    print(args)
     # we start by making the state_dicts necessary for the pretrained models
-    if checkpoint and Path(f"{data_folder}/checkpoints/{DL_MAML}/state_dict.pth").exists():
+    if args.checkpoint and Path(f"{args.data_folder}/DL_MAML/state_dict.pth").exists():
         pass
     else:
         train_maml_model(
-            data_folder,
+            args.data_folder,
             classifier_base_layers=CLASSIFIER_BASE_LAYERS,
             classifier_dropout=CLASSIFIER_DROPOUT,
             classifier_vector_size=HIDDEN_VECTOR_SIZE,
             num_classification_layers=NUM_CLASSIFICATION_LAYERS,
-            model_name=DL_MAML,
+            model_name=f"DL_MAML_{args.labelset}",
+            labelset=args.labelset,
+            task_sampling_strategy="random"
         )
 
-    if checkpoint and Path(f"{data_folder}/checkpoints/{DL_PRETRAINED}/state_dict.pth").exists():
-        pass
-    else:
-        pretrain_model(
-            data_folder,
-            classifier_base_layers=CLASSIFIER_BASE_LAYERS,
-            classifier_dropout=CLASSIFIER_DROPOUT,
-            classifier_vector_size=HIDDEN_VECTOR_SIZE,
-            num_classification_layers=NUM_CLASSIFICATION_LAYERS,
-            model_name=DL_PRETRAINED,
-        )
+    # if args.checkpoint and Path(f"{args.data_folder}/DL_PRETRAINED/state_dict.pth").exists():
+    #     pass
+    # else:
+    #     pretrain_model(
+    #         args.data_folder,
+    #         classifier_base_layers=CLASSIFIER_BASE_LAYERS,
+    #         classifier_dropout=CLASSIFIER_DROPOUT,
+    #         classifier_vector_size=HIDDEN_VECTOR_SIZE,
+    #         num_classification_layers=NUM_CLASSIFICATION_LAYERS,
+    #         model_name=DL_PRETRAINED,
+    #     )
 
-    for model in [DL_PRETRAINED, DL_MAML, DL_RANDOM]:
+    for model in [ f"DL_MAML_{args.labelset}"]: # DL_PRETRAINED, DL_RANDOM]:
         if model != DL_RANDOM:
-            state_dict = torch.load(Path(f"{data_folder}/checkpoints/{model}/state_dict.pth"))
+            state_dict = torch.load(Path(f"{args.data_folder}/{model}/state_dict.pth"))
         else:
             state_dict = None
 
-        run(data_folder, state_dict, model)
+        run(args.data_folder, state_dict, model)
