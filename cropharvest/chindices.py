@@ -17,7 +17,7 @@ import numpy as np
 
 DATA_DIR = "cropdata"
 
-NEW_INDICES = ["ExG", "ExR", "SAVI", "GNDVI"]
+NEW_INDICES = ["ExG", "ExR", "SAVI", "GNDVI", "GRVI"]
 
 def main(args):
     DATA_DIR = args.datapath
